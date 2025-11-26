@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preenchimento de contrato Franquias VOLL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      /* Hide scrollbar for clean UI but allow scroll */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+      
+      /* Fix for input visibility during autofill/typing */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active{
+          -webkit-box-shadow: 0 0 0 30px #f8fafc inset !important;
+          -webkit-text-fill-color: #0f172a !important;
+          transition: background-color 5000s ease-in-out 0s;
+      }
+      
+      input:focus:-webkit-autofill {
+          -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+      }
+
+      /* Print styles to ensure the hidden contract renders correctly for PDF generation */
+      .print-container {
+        font-family: 'Times New Roman', Times, serif;
+        line-height: 1.5;
+        color: black;
+        background: white;
+        width: 210mm; /* A4 width */
+        padding: 20mm;
+        margin: 0 auto;
+        font-size: 12pt;
+        text-align: justify;
+      }
+      .print-container h1, .print-container h2, .print-container h3 {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 1rem;
+      }
+      .print-container p {
+        margin-bottom: 1rem;
+      }
+      .print-container strong {
+        font-weight: bold;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-100 text-slate-900 antialiased selection:bg-[#00AAA1] selection:text-white">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
