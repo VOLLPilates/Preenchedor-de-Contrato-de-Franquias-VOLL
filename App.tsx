@@ -22,6 +22,35 @@ const isValidCPF = (cpf: string): boolean => {
   return rest(10) === cpfArray[9] && rest(11) === cpfArray[10];
 };
 
+const maskCPF = (value: string): string => {
+  const numeric = value.replace(/\D/g, '');
+  if (numeric.length <= 11) {
+    return numeric
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  }
+  return value.slice(0, 14); // Limit if user pastes
+};
+
+const maskRG = (value: string): string => {
+  let v = value.replace(/\D/g, "");
+  v = v.slice(0, 10); // Limit to reasonable max length for standard RGs
+  
+  // Standard formatting 12.345.678-9
+  if (v.length > 2) {
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+  }
+  if (v.length > 5) {
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+  }
+  if (v.length > 8) {
+    v = v.replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+  }
+  return v;
+};
+
 const maskCurrency = (value: string): string => {
   let v = value.replace(/\D/g, "");
   v = (Number(v) / 100).toFixed(2) + "";
@@ -56,22 +85,21 @@ const App: React.FC = () => {
     const { name, value } = e.target;
     
     if (name === 'cpf') {
-      const numeric = value.replace(/\D/g, '');
-      let masked = numeric;
-      if (numeric.length <= 11) {
-        masked = numeric
-          .replace(/(\d{3})(\d)/, '$1.$2')
-          .replace(/(\d{3})(\d)/, '$1.$2')
-          .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-          .replace(/(-\d{2})\d+?$/, '$1');
-      }
+      const masked = maskCPF(value);
+      const numeric = masked.replace(/\D/g, '');
+      
       setData(prev => ({ ...prev, [name]: masked }));
+      
       if (numeric.length === 11) {
         setCpfError(!isValidCPF(numeric));
       } else {
-        // Only clear error if empty or incomplete, strict validation happens on 11 chars
         setCpfError(false); 
       }
+      return;
+    }
+
+    if (name === 'rg') {
+      setData(prev => ({ ...prev, [name]: maskRG(value) }));
       return;
     }
 
@@ -123,9 +151,16 @@ const App: React.FC = () => {
   };
 
   const updateWitness = (id: string, field: 'cpf' | 'rg', value: string) => {
+    let finalValue = value;
+    if (field === 'cpf') {
+      finalValue = maskCPF(value);
+    } else if (field === 'rg') {
+      finalValue = maskRG(value);
+    }
+
     setData(prev => ({
       ...prev,
-      testemunhas: prev.testemunhas.map(w => w.id === id ? { ...w, [field]: value } : w)
+      testemunhas: prev.testemunhas.map(w => w.id === id ? { ...w, [field]: finalValue } : w)
     }));
   };
 
@@ -170,7 +205,7 @@ const App: React.FC = () => {
       nacionalidadeType: "Brasileira",
       estadoCivil: "Casado(a)",
       profissao: "AQUI VAI A PROFISSÃO",
-      rg: "1234567890",
+      rg: "12.345.678-9",
       cpf: "000.000.000-00",
       enderecoRua: "AQUI VAI O ENDEREÇO (RUA)",
       enderecoNumero: "123",
@@ -199,22 +234,41 @@ const App: React.FC = () => {
       cidadeAssinatura: "Porto Alegre",
       dataAssinatura: new Date().toISOString().split('T')[0],
       testemunhas: [
-        { id: '1', cpf: '000.000.000-00', rg: '123456' },
-        { id: '2', cpf: '111.111.111-11', rg: '654321' }
+        { id: '1', cpf: '000.000.000-00', rg: '12.345.678-0' },
+        { id: '2', cpf: '111.111.111-11', rg: '87.654.321-X' }
       ]
     });
   };
 
   const generatePDF = () => {
     // Validation check before generation
+    
+    // 1. Validate Main CPF
     if (data.nacionalidadeType === 'Brasileira') {
       const numericCPF = data.cpf.replace(/[^\d]+/g, '');
       if (!isValidCPF(numericCPF)) {
         alert("O CPF informado é inválido. Por favor, corrija antes de baixar o documento.");
         setCpfError(true);
-        setActiveTab('personal'); // Redirect to personal tab
+        setActiveTab('personal');
         return;
       }
+    }
+
+    // 2. Validate Witness CPFs
+    let witnessError = false;
+    data.testemunhas.forEach(w => {
+        const numeric = w.cpf.replace(/[^\d]+/g, '');
+        // Validate if filled (assuming mandatory if added, or strict check)
+        // Usually contracts require witnesses, so if they exist in list, check them.
+        if (numeric.length > 0 && !isValidCPF(numeric)) {
+            witnessError = true;
+        }
+    });
+
+    if (witnessError) {
+        alert("Uma ou mais testemunhas possuem CPF inválido. Verifique a aba de Assinaturas.");
+        setActiveTab('signatures');
+        return;
     }
 
     setGenerating(true);
@@ -457,7 +511,15 @@ const App: React.FC = () => {
                   
                   <div>
                     <label className={labelClass}>RG</label>
-                    <input type="text" name="rg" value={data.rg} onChange={handleChange} className={inputClass} placeholder="Ex: 00.000.000-0" />
+                    <input 
+                      type="text" 
+                      name="rg" 
+                      value={data.rg} 
+                      onChange={handleChange} 
+                      className={inputClass} 
+                      placeholder="Ex: 00.000.000-0" 
+                      maxLength={14}
+                    />
                   </div>
                   
                   <div className="col-span-2 mt-6 pt-6 border-t border-slate-100">
@@ -748,7 +810,11 @@ const App: React.FC = () => {
                      {data.testemunhas.length === 0 && (
                         <p className="text-center text-slate-400 py-4 italic">Nenhuma testemunha adicionada.</p>
                      )}
-                     {data.testemunhas.map((wit, index) => (
+                     {data.testemunhas.map((wit, index) => {
+                       const numericCpf = wit.cpf.replace(/[^\d]+/g, '');
+                       const isInvalid = numericCpf.length === 11 && !isValidCPF(numericCpf);
+                       
+                       return (
                        <div key={wit.id} className="p-5 bg-white rounded-lg border border-slate-200 relative group hover:shadow-md transition-shadow">
                           <button 
                             onClick={() => removeWitness(wit.id)}
@@ -770,9 +836,11 @@ const App: React.FC = () => {
                                   type="text" 
                                   value={wit.cpf} 
                                   onChange={(e) => updateWitness(wit.id, 'cpf', e.target.value)} 
-                                  className={inputClass}
+                                  className={isInvalid ? errorInputClass : inputClass}
                                   placeholder="000.000.000-00" 
+                                  maxLength={14}
                                 />
+                                {isInvalid && <p className="text-red-500 text-xs mt-1.5 ml-1 font-medium flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span> CPF Inválido</p>}
                              </div>
                              <div>
                                 <label className={labelClass}>RG</label>
@@ -781,11 +849,13 @@ const App: React.FC = () => {
                                   value={wit.rg} 
                                   onChange={(e) => updateWitness(wit.id, 'rg', e.target.value)} 
                                   className={inputClass} 
+                                  placeholder="Ex: 00.000.000-0"
+                                  maxLength={14}
                                 />
                              </div>
                           </div>
                        </div>
-                     ))}
+                     )})}
                    </div>
                  </div>
                </div>
